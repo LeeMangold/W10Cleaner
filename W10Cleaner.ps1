@@ -669,6 +669,40 @@ reg delete "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Advertis
 reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /f
 reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo" /v "Enabled" /t REG_DWORD /d "0" /f
 
+# Disable Cortana
+Write-Host "Disabling Cortana..."
+If (!(Test-Path "HKCU:\Software\Microsoft\Personalization\Settings")) {
+	New-Item -Path "HKCU:\Software\Microsoft\Personalization\Settings" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Personalization\Settings" -Name "AcceptedPrivacyPolicy" -Type DWord -Value 0
+If (!(Test-Path "HKCU:\Software\Microsoft\InputPersonalization")) {
+	New-Item -Path "HKCU:\Software\Microsoft\InputPersonalization" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\InputPersonalization" -Name "RestrictImplicitTextCollection" -Type DWord -Value 1
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\InputPersonalization" -Name "RestrictImplicitInkCollection" -Type DWord -Value 1
+If (!(Test-Path "HKCU:\Software\Microsoft\InputPersonalization\TrainedDataStore")) {
+	New-Item -Path "HKCU:\Software\Microsoft\InputPersonalization\TrainedDataStore" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\InputPersonalization\TrainedDataStore" -Name "HarvestContacts" -Type DWord -Value 0
+
+
+#Unpin Default Apps from Task Bar
+function Unpin-App([string]$appname) {
+    ((New-Object -Com Shell.Application).NameSpace('shell:::{4234d49b-0245-4df3-b780-3893943456e1}').Items() |
+        ?{$_.Name -eq $appname}).Verbs() | ?{$_.Name.replace('&','') -match 'Unpin from taskbar'} | %{$_.DoIt()}
+}
+
+Unpin-App("Microsoft Edge")
+Unpin-App("Microsoft Store")
+
+
+#Remove Explporer from Taskbar
+DEL /F /S /Q /A "%AppData%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\*"
+REG DELETE HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband /F
+taskkill /f /im explorer.exe
+start explorer.exe
+
+
 
 ##########
 # Restart
